@@ -60,22 +60,19 @@ public final class Constants {
     public static final String PRIVACY_POLICY_LOCATION = "policies/privacy.html";
     public static final String TERMS_AND_CONDITIONS_LOCATION = "policies/termsandconditions.html";
 
-    /* Helper URLs */
+    /* Apple Server Constants */
     public static String Sandbox_Apple_URL = "https://sandbox.itunes.apple.com/verifyReceipt";
     public static String Apple_URL = "https://buy.itunes.apple.com/verifyReceipt";
+    public static long APPLE_TIMEOUT_MINUTES = 4;
 
     /* ChatSonic Server Constants */
     public static URI CHATSONIC_URI = URI.create("https://api.writesonic.com/v2/business/content/chatsonic?engine=premium");
 
     /* OpenAI Constants */
     public static URI OPENAI_URI = URI.create("https://api.openai.com/v1/completions");
+    public static long AI_TIMEOUT_MINUTES = 4;
     public static String Model_Name = "text-davinci-003";
     public static int Temperature = 0;
-
-    //    /* Replicate Server Constants */
-//    public static URI REPLICATE_STABLE_DIFFUSION_URI = URI.create("https://api.replicate.com/v1/predictions");
-//    public static String Stable_Diffusion_Version_ID = "a9758cbfbd5f3c2094457d996681af52552901775aa2d6dd0b17fd15df959bef";
-    public static int Replicate_Get_Info_JSON_Delay_Seconds = 1;
 
     /* Success and Exceptions */
     public static final int SUCCESS_Success = 1;

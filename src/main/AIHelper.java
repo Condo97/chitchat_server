@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 
 public class AIHelper {
 
@@ -24,7 +25,7 @@ public class AIHelper {
      */
     public static OpenAIChat generateChat(String inputText, boolean isPremium) throws IOException, InterruptedException {
         System.out.print("Started Generate Chat - ");
-        HttpClient client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
+        HttpClient client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofMinutes(Constants.AI_TIMEOUT_MINUTES)).build();
 
         JSONObject inputJSON = new JSONObject();
         inputJSON.put("model", Constants.Model_Name);
@@ -41,6 +42,7 @@ public class AIHelper {
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
         JSONObject outputJSON = new JSONObject(response.body());
+        System.out.println(outputJSON);
 //        String outputMessage = "There was an error getting the chat response. Please try again in a few minutes.";
         OpenAIChat chat;
         if (outputJSON.has("choices")) {
@@ -68,7 +70,6 @@ public class AIHelper {
 //            System.out.println(outputJSON);
         }
 
-        System.out.println("Ended Generate Chat");
         return chat;
     }
 

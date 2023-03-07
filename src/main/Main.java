@@ -18,7 +18,6 @@ public class Main {
 
         System.out.println("Runtime.getRuntime().maxMemory()="+Runtime.getRuntime().maxMemory());
 
-        
         try {
             // setup the socket address
             InetSocketAddress address = new InetSocketAddress(443);
@@ -63,21 +62,22 @@ public class Main {
                 }
             });
 
-            httpsServer.createContext(Constants.GET_CHAT_URI.toString(), new HTTPSHelper());
-            httpsServer.createContext(Constants.GET_REMAINING_URI.toString(), new HTTPSHelper());
-            httpsServer.createContext(Constants.REGISTER_USER_URI.toString(), new HTTPSHelper());
-            httpsServer.createContext(Constants.GET_IMPORTANT_CONSTANTS_URI.toString(), new HTTPSHelper());
-            httpsServer.createContext(Constants.FULL_VALIDATE_PREMIUM_URI.toString(), new HTTPSHelper());
-            httpsServer.createContext(Constants.QUICK_VALIDATE_PREMIUM_URI.toString(), new HTTPSHelper());
-            httpsServer.createContext(Constants.GET_IAP_STUFF_URI.toString(), new HTTPSHelper());
-            httpsServer.createContext(Constants.PRIVACY_POLICY_URI.toString(), new HTTPSHelper());
-            httpsServer.createContext(Constants.TERMS_AND_CONDITIONS_URI.toString(), new HTTPSHelper());
-            httpsServer.createContext(Constants.PRINT_ALL_ACTIVE_SUBSCRIPTIONS_URI.toString(), new HTTPSHelper());
+            HTTPSHelper helper = new HTTPSHelper();
+            httpsServer.createContext(Constants.GET_CHAT_URI.toString(), helper);
+            httpsServer.createContext(Constants.GET_REMAINING_URI.toString(), helper);
+            httpsServer.createContext(Constants.REGISTER_USER_URI.toString(), helper);
+            httpsServer.createContext(Constants.GET_IMPORTANT_CONSTANTS_URI.toString(), helper);
+            httpsServer.createContext(Constants.FULL_VALIDATE_PREMIUM_URI.toString(), helper);
+            httpsServer.createContext(Constants.QUICK_VALIDATE_PREMIUM_URI.toString(), helper);
+            httpsServer.createContext(Constants.GET_IAP_STUFF_URI.toString(), helper);
+            httpsServer.createContext(Constants.PRIVACY_POLICY_URI.toString(), helper);
+            httpsServer.createContext(Constants.TERMS_AND_CONDITIONS_URI.toString(), helper);
+            httpsServer.createContext(Constants.PRINT_ALL_ACTIVE_SUBSCRIPTIONS_URI.toString(), helper);
 
             // Legacy
-            httpsServer.createContext(Constants.GET_DISPLAY_PRICE_URI.toString(), new HTTPSHelper());
-            httpsServer.createContext(Constants.GET_SHARE_URL_URI.toString(), new HTTPSHelper());
-            httpsServer.setExecutor(Executors.newFixedThreadPool(2)); // creates a default executor
+            httpsServer.createContext(Constants.GET_DISPLAY_PRICE_URI.toString(), helper);
+            httpsServer.createContext(Constants.GET_SHARE_URL_URI.toString(), helper);
+            httpsServer.setExecutor(Executors.newFixedThreadPool(4)); // creates a default executor
             httpsServer.start();
 
 //            System.out.println(AIHelper.generateImage("baby elephants", 512, 512, 0.8, 1, 10, 7.5, -1));

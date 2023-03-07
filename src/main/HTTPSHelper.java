@@ -33,16 +33,21 @@ public class HTTPSHelper implements HttpHandler {
             InputStreamReader isr = new InputStreamReader(exchange.getRequestBody(), "utf-8");
             BufferedReader br = new BufferedReader(isr);
 
-            StringBuilder bodyString = new StringBuilder();
-            String line;
-            while ((line = br.readLine()) != null) {
-                bodyString.append(line);
+            try {
+                StringBuilder bodyString = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) {
+                    bodyString.append(line);
+                }
+
+                bodyJSON = new JSONObject(bodyString.toString());
+
+            } catch (Exception e) {
+                throw e;
+            } finally {
+                isr.close();
+                br.close();
             }
-
-            bodyJSON = new JSONObject(bodyString.toString());
-
-            isr.close();
-            br.close();
         }
 
         System.out.println("Mid\t" + Thread.currentThread().getName());
@@ -190,6 +195,8 @@ public class HTTPSHelper implements HttpHandler {
             //Shouldn't ever be called if constants are set up correctly
             responseJSON.put("Success", Constants.SUCCESS_OddRetrievalValue);
 
+            System.out.println("WEIRD THING HAPPENED!");
+
             exchange.sendResponseHeaders(200, responseJSON.toString().length());
 
             os.write(responseJSON.toString().getBytes());
@@ -211,107 +218,115 @@ public class HTTPSHelper implements HttpHandler {
          *
          */
 
-        // Testing Time
-        long startTime = System.nanoTime();
-
-        /* Read JSON... should catch any JSON errors here before we get into db operations */
-        final String authToken = json.getString("authToken");
-        final String inputText = json.getString("inputText");
-
-        /* Get userID from AuthToken */
+        // Setup Database
         DatabaseHelper db = new DatabaseHelper();
-        int userID = db.getUserIDFromAuthToken(authToken);
+
+        try {
+            // Testing Time
+            long startTime = System.nanoTime();
+
+            /* Read JSON... should catch any JSON errors here before we get into db operations */
+            final String authToken = json.getString("authToken");
+            final String inputText = json.getString("inputText");
+
+            /* Get userID from AuthToken */
+            int userID = db.getUserIDFromAuthToken(authToken);
 //        System.out.println(userID);
 
-        /* Attempt to quick-validate receipt (within time range) */
-        boolean userIsPremium = false;
-        Receipt recentReceipt = db.getMostRecentReceipt(userID);
+            /* Add Chat to database */
+            /* Generate the Timestamp */
+            Calendar cal = Calendar.getInstance();
+            java.util.Date now = cal.getTime();
+            long time = now.getTime();
+            Timestamp timestamp = new Timestamp(time);
 
-        if(recentReceipt != null) {
-            //Get date of most recent receipt
-            java.util.Date prevReceiptCheckDate = new java.util.Date(recentReceipt.getCheckDate().getTime());
+            long chatID = db.addChat(userID, inputText, timestamp);
 
-            long currentSeconds = new java.util.Date().getTime() / 1000;
-            long prevReceiptCheckDateSeconds = prevReceiptCheckDate.getTime() / 1000;
+            /* Attempt to quick-validate receipt (within time range) */
+            boolean userIsPremium = false;
+            Receipt recentReceipt = db.getMostRecentReceipt(userID);
+
+            if (recentReceipt != null) {
+                //Get date of most recent receipt
+                java.util.Date prevReceiptCheckDate = new java.util.Date(recentReceipt.getCheckDate().getTime());
+
+                long currentSeconds = new java.util.Date().getTime() / 1000;
+                long prevReceiptCheckDateSeconds = prevReceiptCheckDate.getTime() / 1000;
 
 //            System.out.println("About to check for premium...");
 
-            if ((currentSeconds - prevReceiptCheckDateSeconds) >= Constants.Delay_Seconds_Premium_Check) {
-                //Apple Premium Check
-                updateAndCheckReceipt(userID, recentReceipt.getReceiptData());
+                if ((currentSeconds - prevReceiptCheckDateSeconds) >= Constants.Delay_Seconds_Premium_Check) {
+                    //Apple Premium Check
+                    updateAndCheckReceipt(userID, recentReceipt.getReceiptData());
 
-                recentReceipt = db.getMostRecentReceipt(userID);
+                    recentReceipt = db.getMostRecentReceipt(userID);
 
 //                System.out.println("Successfully checked for premium...");
-            }
+                }
 
 //            System.out.println("Finished checking for premium. Expired: " + recentReceipt.isExpired());
 
-            userIsPremium = !recentReceipt.isExpired();
-        }
+                userIsPremium = !recentReceipt.isExpired();
+            }
 
-        /* Check Last Chat Generated is Within Time Range - Not yet implemented */
-        Chat currentChat = db.getMostRecentGeneratedChat(userID);
-        long currentSeconds = new java.util.Date().getTime() / 1000;
-        long prevChatSeconds = -1;
+            /* Check Last Chat Generated is Within Time Range - Not yet implemented */
+            Chat currentChat = db.getMostRecentGeneratedChat(userID);
+            long currentSeconds = new java.util.Date().getTime() / 1000;
+            long prevChatSeconds = -1;
 //        System.out.println("asdfadsf!");
 
-        if (currentChat != null) {
-            prevChatSeconds = currentChat.getGenerateDate().getTime() / 1000;
-        }
+            if (currentChat != null) {
+                prevChatSeconds = currentChat.getGenerateDate().getTime() / 1000;
+            }
 
 //        System.out.println("Prev Chat Seconds: " + prevArtSeconds);
 //        System.out.println("Current Seconds: " + currentSeconds);
 
-        /* Get caps for Quality and (Free or Paid) */
-        int cap = -1;
+            /* Get caps for Quality and (Free or Paid) */
+            int cap = -1;
 
-        if (!userIsPremium) cap = Constants.Cap_Chat_Daily_Free;
-        else cap = Constants.Cap_Chat_Daily_Paid;
+            if (!userIsPremium) cap = Constants.Cap_Chat_Daily_Free;
+            else cap = Constants.Cap_Chat_Daily_Paid;
 
-        /* Check Chat Cap for Day */
-        int chatCount = db.countTodaysChats(userID);
+            /* Check Chat Cap for Day */
+            int chatCount = db.countTodaysChats(userID);
 //        System.out.println("Chat Count: " + chatCount);
 
-        if (cap != -1 && chatCount >= cap)
-            throw new GenerateCapException("Too many chats generated today for the user."); //Kind've lazy implementation, could implement it up in the ifs to give more detailed expressions, but it's just gonna be used by me so !
+            if (cap != -1 && chatCount >= cap)
+                throw new GenerateCapException("Too many chats generated today for the user."); //Kind've lazy implementation, could implement it up in the ifs to give more detailed expressions, but it's just gonna be used by me so !
 
-        /* Generate the Chat! */
-        OpenAIChat outputChat = AIHelper.generateChat(inputText, userIsPremium);
+            /* Generate the Chat! */
+            OpenAIChat outputChat = AIHelper.generateChat(inputText, userIsPremium);
 
-        /* Generate the Timestamp */
-        Calendar cal = Calendar.getInstance();
-        java.util.Date now = cal.getTime();
-        long time = now.getTime();
-        Timestamp timestamp = new Timestamp(time);
+            /* Save the Chat and get the Chat object */
+            db.updateChat(chatID, outputChat.getText());
 
-        /* Save the Chat and get the Chat object */
-        db.addChat(userID, inputText, outputChat.getText(), timestamp);
+            /* Get Generate Info URL */
+            JSONObject outputJson = new JSONObject();
+            outputJson.put("output", outputChat.getText());
+            outputJson.put("finishReason", outputChat.getFinishReason());
 
-        /* Get Generate Info URL */
-        JSONObject outputJson = new JSONObject();
-        outputJson.put("output", outputChat.getText());
-        outputJson.put("finishReason", outputChat.getFinishReason());
+            if (cap == -1) {
+                outputJson.put("remaining", -1);
+            } else {
+                outputJson.put("remaining", cap - chatCount - 1);
+            }
 
-        if (cap == -1) {
-            outputJson.put("remaining", -1);
-        } else {
-            outputJson.put("remaining", cap - chatCount - 1);
-        }
-
-        db.close();
-
-        // Testing time
+            // Testing time
 //        System.out.println((System.nanoTime() - startTime) / 1000000  + "\tms on thread\t" + Thread.currentThread().getName() + "\t\t" + (new SimpleDateFormat("HH:mm", Locale.US)).format(new Date()));
 
-        return outputJson;
+            return outputJson;
+        } catch (Exception e) {
+            throw e;
+        } finally {
+            db.close();
+        }
     }
 
     private JSONObject registerUser() throws SQLException, SomethingWeirdHappenedException, JSONException {
         /* Register User in DB, obtaining AuthToken */
         DatabaseHelper db = new DatabaseHelper();
         String authToken = db.registerUser();
-
         db.close();
 
         return new JSONObject().put("authToken", authToken);
@@ -339,60 +354,66 @@ public class HTTPSHelper implements HttpHandler {
          *  authToken (String)
          *
          */
-        /* Read JSON... should catch any JSON errors here before we get into db operations */
-        final String authToken = json.getString("authToken");
-
-        /* Get userID from AuthToken */
+        /* Initialize DB object */
         DatabaseHelper db = new DatabaseHelper();
-        int userID = db.getUserIDFromAuthToken(authToken);
 
-        /* Attempt to quick-validate receipt (within time range) */
-        boolean userIsPremium = false;
-        Receipt recentReceipt = db.getMostRecentReceipt(userID);
+        try {
+            /* Read JSON... should catch any JSON errors here before we get into db operations */
+            final String authToken = json.getString("authToken");
 
-        if(recentReceipt != null) {
-            //Get date of most recent receipt
-            java.util.Date prevReceiptCheckDate = new java.util.Date(recentReceipt.getCheckDate().getTime());
+            /* Get userID from AuthToken */
+            int userID = db.getUserIDFromAuthToken(authToken);
 
-            long currentSeconds = new java.util.Date().getTime() / 1000;
-            long prevReceiptCheckDateSeconds = prevReceiptCheckDate.getTime() / 1000;
+            /* Attempt to quick-validate receipt (within time range) */
+            boolean userIsPremium = false;
+            Receipt recentReceipt = db.getMostRecentReceipt(userID);
+
+            if (recentReceipt != null) {
+                //Get date of most recent receipt
+                java.util.Date prevReceiptCheckDate = new java.util.Date(recentReceipt.getCheckDate().getTime());
+
+                long currentSeconds = new java.util.Date().getTime() / 1000;
+                long prevReceiptCheckDateSeconds = prevReceiptCheckDate.getTime() / 1000;
 
 //            System.out.println("About to check for premium...");
 
-            if ((currentSeconds - prevReceiptCheckDateSeconds) >= Constants.Delay_Seconds_Premium_Check) {
-                //Apple Premium Check
-                updateAndCheckReceipt(userID, recentReceipt.getReceiptData());
+                if ((currentSeconds - prevReceiptCheckDateSeconds) >= Constants.Delay_Seconds_Premium_Check) {
+                    //Apple Premium Check
+                    updateAndCheckReceipt(userID, recentReceipt.getReceiptData());
 
-                recentReceipt = db.getMostRecentReceipt(userID);
+                    recentReceipt = db.getMostRecentReceipt(userID);
 
 //                System.out.println("Successfully checked for premium...");
-            }
+                }
 
 //            System.out.println("Finished checking for premium. Expired: " + recentReceipt.isExpired());
 
-            userIsPremium = !recentReceipt.isExpired();
-        }
+                userIsPremium = !recentReceipt.isExpired();
+            }
 
-        /* Get caps for Quality and (Free or Paid) */
-        int cap = -1;
+            /* Get caps for Quality and (Free or Paid) */
+            int cap = -1;
 
-        if (!userIsPremium) cap = Constants.Cap_Chat_Daily_Free;
-        else cap = Constants.Cap_Chat_Daily_Paid;
+            if (!userIsPremium) cap = Constants.Cap_Chat_Daily_Free;
+            else cap = Constants.Cap_Chat_Daily_Paid;
 
-        /* Check Chat Cap for Day */
-        int chatCount = db.countTodaysChats(userID);
+            /* Check Chat Cap for Day */
+            int chatCount = db.countTodaysChats(userID);
 //        System.out.println("Chat Count: " + chatCount);
 
-        JSONObject outputJson = new JSONObject();
-        if(cap == -1) {
-            outputJson.put("remaining", -1);
-        } else {
-            outputJson.put("remaining", cap - chatCount);
+            JSONObject outputJson = new JSONObject();
+            if (cap == -1) {
+                outputJson.put("remaining", -1);
+            } else {
+                outputJson.put("remaining", cap - chatCount);
+            }
+
+            return outputJson;
+        } catch (Exception e) {
+            throw e;
+        } finally {
+            db.close();
         }
-
-        db.close();
-
-        return outputJson;
     }
 
     private JSONObject fullValidatePremium(JSONObject json) throws IOException, InterruptedException, SQLException, MissingRowException, DuplicateRowException, ReceiptExistsException, JSONException {

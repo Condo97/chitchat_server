@@ -53,6 +53,7 @@ public class DatabaseHelper {
         ps.setString(1, authToken);
 
         ps.executeUpdate();
+        ps.close();
 
         /* Get userID */
         ps = conn.prepareStatement("SELECT user_id FROM User_AuthToken WHERE auth_token=?");
@@ -66,6 +67,8 @@ public class DatabaseHelper {
             userID = rs.getInt("user_id");
             count++;
         }
+
+        ps.close();
 
         if(count > 1) throw new SomethingWeirdHappenedException("registerUser() validate: Unexpected row while registering new User... SQL get a hold of yourself, in theory this message is impossible!");
         if(userID == -1) throw new SomethingWeirdHappenedException("registerUser() validate: Didn't raise SQLException, but didn't create a row? In theory I should never see this message...");
@@ -81,12 +84,14 @@ public class DatabaseHelper {
         ps.setTimestamp(2, new java.sql.Timestamp(time));
 
         ps.executeUpdate();
+        ps.close();
 
         /* Validate UserLogin */
         ps = conn.prepareStatement( "SELECT login_date FROM User_Login WHERE user_id=?;");
         ps.setInt(1, userID);
 
         rs = ps.executeQuery();
+
         count = 0;
         while(rs.next()) {
             count++;
@@ -162,13 +167,43 @@ public class DatabaseHelper {
         return array;
     }
 
-    public void addChat(final int userID, final String userText, final String aiText, final Timestamp date) throws SQLException {
+    /***
+     * Creates a Chat object in Database and returns the chat_id
+     *
+     * @param userID
+     * @param userText
+     * @param date
+     * @return
+     * @throws SQLException
+     */
+    public long addChat(final int userID, final String userText, final Timestamp date) throws SQLException, SomethingWeirdHappenedException {
         /* Insert Chat */
-        PreparedStatement ps = conn.prepareStatement("INSERT INTO Chat (chat_id, user_id, user_text, ai_text, date) VALUES (NULL, ?, ?, ?, ?);");
+        PreparedStatement ps = conn.prepareStatement("INSERT INTO Chat (chat_id, user_id, user_text, date) VALUES (NULL, ?, ?, ?);", Statement.RETURN_GENERATED_KEYS);
         ps.setInt(1, userID);
         ps.setString(2, userText);
-        ps.setString(3, aiText);
-        ps.setTimestamp(4, date);
+        ps.setTimestamp(3, date);
+
+        ps.executeUpdate();
+
+        ResultSet rs = ps.getGeneratedKeys();
+        long chatID = -1;
+        while (rs.next()) {
+            System.out.println(rs.getLong(1));
+            chatID = rs.getLong(1);
+        }
+
+        ps.close();
+
+        if (chatID == -1) throw new SomethingWeirdHappenedException("No new row in addChat?");
+
+        return chatID;
+    }
+
+    public void updateChat(final long chatID, final String aiText) throws SQLException {
+        /* Update Chat Adding AI Text */
+        PreparedStatement ps = conn.prepareStatement("UPDATE Chat SET ai_text=? WHERE chat_id=?");
+        ps.setString(1, aiText);
+        ps.setLong(2, chatID);
 
         ps.executeUpdate();
         ps.close();
