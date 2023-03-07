@@ -14,9 +14,8 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 
 public class AppleHelper {
+    private static HttpClient client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMinutes(Constants.APPLE_TIMEOUT_MINUTES)).build();
     private static IAPObject isPremium(String receiptString, boolean isSandbox) throws IOException, InterruptedException, JSONException {
-        HttpClient client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofMinutes(Constants.APPLE_TIMEOUT_MINUTES)).build();
-
         JSONObject json = new JSONObject();
         json.put("receipt-data", receiptString);
         json.put("password", SecretSomething.sharedAppSecret);

@@ -13,6 +13,8 @@ import java.time.Duration;
 
 public class AIHelper {
 
+    private static HttpClient client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofMinutes(Constants.AI_TIMEOUT_MINUTES)).build();
+
     /***
      * Generate Chat
      *
@@ -25,7 +27,6 @@ public class AIHelper {
      */
     public static OpenAIChat generateChat(String inputText, boolean isPremium) throws IOException, InterruptedException {
         System.out.print("Started Generate Chat - ");
-        HttpClient client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofMinutes(Constants.AI_TIMEOUT_MINUTES)).build();
 
         JSONObject inputJSON = new JSONObject();
         inputJSON.put("model", Constants.Model_Name);
@@ -36,7 +37,7 @@ public class AIHelper {
         HttpRequest request = HttpRequest.newBuilder().POST(HttpRequest.BodyPublishers.ofString(inputJSON.toString()))
                 .uri(Constants.OPENAI_URI)
                 .setHeader("Content-Type", "application/json")
-                .setHeader("Authorization", "Bearer " + SecretSomething.openAiApi)
+                .setHeader("Authorization", "Bearer " + SecretSomething.OAApi)
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());

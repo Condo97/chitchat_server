@@ -11,12 +11,22 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.*;
 import java.security.cert.CertificateException;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.concurrent.Executors;
 
 public class Main {
     public static void main(String[] args) {
 
         System.out.println("Runtime.getRuntime().maxMemory()="+Runtime.getRuntime().maxMemory());
+
+        try {
+            // Register MySQL Driver
+            DriverManager.registerDriver(new com.mysql.cj.jdbc.Driver());
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
 
         try {
             // setup the socket address

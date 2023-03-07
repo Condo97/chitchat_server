@@ -16,17 +16,12 @@ import java.util.Random;
 
 public class DatabaseHelper {
     private Connection conn = null;
-    private com.mysql.cj.jdbc.Driver driver = null;
     public DatabaseHelper() throws SQLException {
-        driver = new com.mysql.cj.jdbc.Driver();
-        DriverManager.registerDriver(driver);
-
         conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/chitchat_schema?user=serverconnection&password=" + SecretSomething.mysqlPassword);
     }
 
     public void close() throws SQLException {
         conn.close();
-        DriverManager.deregisterDriver(driver);
     }
 
     /*** Register User
